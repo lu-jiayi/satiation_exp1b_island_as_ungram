@@ -1,5 +1,5 @@
 
-## Satiation Baseline (replication of Snyder (2000))##
+## Satiation Baseline (replication of Snyder (2000)), treating island items as ungrammatical in terms of balancing ##
 *The original version of this readme file was written by Ciyang Qing.*
 
 Here we are using a template for web-based experiments developed and used in Noah Goodman's CoCoLab.
