@@ -91,9 +91,19 @@ block_15 = all_stimuli.filter(function (e) {
 });
 
 block_1 = shuffle(block_1);
+block_1.push(ungram_control1);
+block_1.push(gram_control1);
 block_2 = shuffle(block_2);
+block_2.push(ungram_control2);
+block_2.push(gram_control2);
 block_3 = shuffle(block_3);
+block_3.push(ungram_control3);
+block_3.push(gram_control3);
 block_4 = shuffle(block_4);
+block_4.push(ungram_control4);
+block_4.push(gram_control4);
+
+
 block_5 = shuffle(block_5);
 block_6 = shuffle(block_6);
 block_7 = shuffle(block_7);
