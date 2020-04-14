@@ -8,19 +8,17 @@ library(lme4)
 library(tidyverse)
 library(simr)
 library(brms)
-data<-read.csv("satiation_baseline-trials.csv")
+`%notin%` <- Negate(`%in%`)
+data<-read.csv("satiation_1b_98item-trials.csv")
 
-#Step 1: Filter out the participants who responded incorrectely to the practice questions:
-practice_good_data=subset(data,condition == "practice_good")
-practice_good_data=subset(practice_good_data,response >= 0.75)
+#Step 1: Filter out the participants who responded incorrectely more than once to the practice questions:
+practice_data=subset(data,block_sequence == "practice")
+practice_good_data=subset(practice_data, wrong_attempts <= 1)
+data=subset(data, is.element(workerid, practice_good_data$workerid))
 
-practice_bad_data=subset(data,condition == "practice_bad")
-practice_bad_data=subset(practice_bad_data,response <= 0.25)
 
-eligible_worker_p = intersect(practice_good_data[,"workerid"], practice_bad_data[,"workerid"])
-data=subset(data, is.element(workerid, eligible_worker_p))
-fill <- c("FILL", "UNGRAM")
-#alternative filter: average filler lower than average ungram
+#Step 2: filter: no overlap of 95%CI of FILL and UNGRAM
+
 filler_data = subset(data, condition == "FILL")
 ungram_data = subset(data, condition == "UNGRAM")
 library(bootstrap)
@@ -50,40 +48,27 @@ for (i in (1:length(all_filler$subject))){
 }
 data = subset(data, workerid %in% eligible_subjects)
 
-data = subset (data, workerid < 40)
+#Step 3: exclude non-English speakers
+non_Eng <- c()
+
+data = subset(data, workerid %notin% non_Eng)
 
 
-#calculate cumulative average
-data = subset(data, item_number != "practice_good")
-data = subset(data, item_number != "practice_bad")
-
-ggplot(data, aes(x=trial_sequence_total, y=response)) + 
-    
-  geom_smooth(method = lm, se = F) + 
-    theme_bw()
-
-
+#calculate and plot trial/cumulative average
+data = subset(data, block_sequence != "practice")
 trial_avg <- aggregate(data[,"response"],list(data$trial_sequence_total), mean)
-
-
 names(trial_avg)[names(trial_avg) == "Group.1"] <- "trial"
 names(trial_avg)[names(trial_avg) == "x"] <- "avg"
+#trial_average plot
 
-ggplot(trial_avg, aes(x=trial, y=avg)) + 
-  
-  geom_smooth(method = lm, se = F) + geom_point()
-  theme_bw()
-  
 trial_avg <- trial_avg[order(trial_avg$trial),]
 cum <- cumsum(trial_avg$avg) / seq_along(trial_avg$avg) 
 trial_avg$cum <- cum
 
-
 ggplot(trial_avg, aes(x=trial, y=avg)) + 
-  
-  geom_smooth(method = lm, se = F) + geom_point()+
+    geom_smooth(method = lm, se = F) + geom_point()+
 theme_bw()
-
+#cum_average plot
 ggplot(trial_avg, aes(x=trial, y=cum)) + 
   
   geom_smooth (se = F) + geom_point()+
@@ -91,78 +76,14 @@ theme_bw()
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-#Alternative#2: the highest in word salad is higher than lowest in gram filler.
-
-filler_data = subset(data, condition == "FILL")
-ungram_data = subset(data, condition == "UNGRAM")
-filler_by_subject = aggregate(filler_data[,"response"],list(filler_data$workerid), min)
-ungram_by_subject = aggregate(ungram_data[,"response"],list(ungram_data$workerid), max)
-
-names(filler_by_subject)[names(filler_by_subject) == "Group.1"] <- "subject"
-names(filler_by_subject)[names(filler_by_subject) == "x"] <- "fill_min"
-
-names(ungram_by_subject)[names(ungram_by_subject) == "Group.1"] <- "subject"
-names(ungram_by_subject)[names(ungram_by_subject) == "x"] <- "ungram_max"
-
-all_filler <- merge(ungram_by_subject, filler_by_subject, by.x="subject")
-
-eligible_subjects = c()
-for (i in (1:length(all_filler$subject))){
-  row = all_filler[i,]
-  if (row$ungram_max < row$fill_min){
-    eligible_subjects <- c(eligible_subjects, row$subject)
-  }
-}
-data = subset(data, workerid %in% eligible_subjects)
-
-
-
-
-
-
-
-
-
-
-#Step 2: Filter out the participants whose average response to fillers are below 0.75
-filler_data = subset(data, condition=="FILL")
-filler_data_by_subject = aggregate(filler_data[,"response"],list(filler_data$workerid), mean)
-filler_data_by_subject_eligible = subset(filler_data_by_subject, x>=0.75)
-eligible_worker_f = filler_data_by_subject_eligible$Group.1
-data=subset(data, is.element(workerid, eligible_worker_f))
-#Step 3: Filter out the participants who responded >0.25 to ungrammatical controls
-ungram_control = subset(data, condition =="UNGRAM")
-to_be_removed = subset(ungram_control, response >0.25)
-worker_to_be_removed = to_be_removed$workerid
-`%notin%` <- Negate(`%in%`)
-data = subset(data, workerid %notin% worker_to_be_removed)
-#Step 4: Response time filter
-data=subset(data, Answer.time_in_minutes >=5)
-
-
-#Step 5: Clean practice trials and control trials.
+#Clean practice trials and control trials.
 data = subset(data, block_sequence != "practice")
-data = subset(data, condition != "UNGRAM")
+#data = subset(data, condition != "UNGRAM")
 #data = subset(data, condition != "FILL")
 d=transform(data, block_sequence = as.numeric(block_sequence))
 write.csv(d,"satiation_baseline_cleaned.csv", row.names = FALSE)
 d <- read.csv("satiation_baseline_cleaned.csv")
 d$condition <- factor(d$condition, levels = c("FILL", "CNPC","SUBJ","WH"))
-#Step 5.5: remove non-English speakers:
-non_Eng <- {}
-d = subset(d, workerid %notin% non_Eng)
 
 
 #look at subset of conditions
@@ -182,15 +103,19 @@ model_global3 <- brm(response~trial_sequence_total*condition +
                         (1+trial_sequence_total*condition|workerid)+(1+trial_sequence_total*condition|item_number), data = d)
 summary(model_global3)
 
-
+#power analysis
 model_ext_class <- extend(model_global2, along="workerid", n=150)
 model_ext_class
 p_curve_treat <- powerCurve(model_ext_class, nsim=10, test = fcompare(response~trial_sequence_total*condition), along="workerid", breaks=c(50,100,150))
 plot(p_curve_treat)
 powerSim(model_global2, test=fcompare(response~trial_sequence_total*condition))
 
+#overall plot:
+ggplot(d, aes(x=trial_sequence_total, y=response, color = condition, shape = condition)) + 
+  geom_point() + 
+  geom_smooth(method=lm, aes(fill=condition))+theme_bw()
 
-#Step 7: Plot
+#by-subject Plot
 ggplot(d, aes(x=trial_sequence_total, y=response, color = condition, shape = condition)) + 
   geom_point() + 
   geom_smooth(method=lm, aes(fill=condition))+facet_wrap(~workerid)
