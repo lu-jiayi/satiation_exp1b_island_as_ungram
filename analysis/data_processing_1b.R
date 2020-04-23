@@ -49,7 +49,9 @@ for (i in (1:length(all_filler$subject))){
   }
 }
 data = subset(data, workerid %in% eligible_subjects)
-
+data_1 = subset(data, workerid < 41)
+data_2 = subset(data, workerid > 80)
+data<- rbind(data_1, data_2)
 #Step 3: exclude non-English speakers
 non_Eng <- c(119)
 
@@ -81,12 +83,12 @@ theme_bw()
 
 #Clean practice trials and control trials.
 data = subset(data, block_sequence != "practice")
-#data = subset(data, condition != "UNGRAM")
+data = subset(data, condition != "UNGRAM")
 #data = subset(data, condition != "FILL")
 d=transform(data, block_sequence = as.numeric(block_sequence))
 write.csv(d,"satiation_baseline_cleaned.csv", row.names = FALSE)
 d <- read.csv("satiation_baseline_cleaned.csv")
-d$condition <- factor(d$condition, levels = c("FILL", "WH", "CNPC","SUBJ","UNGRAM"))
+d$condition <- factor(d$condition, levels = c("FILL", "WH", "CNPC","SUBJ"))
 d$trial_sequence_total <- as.numeric(d$trial_sequence_total)
 
 #look at subset of conditions
@@ -117,7 +119,6 @@ plot(p_curve_treat)
 #powerSim(model_global2, test=fcompare(response~trial_sequence_total*condition))
 
 #overall plot:
-f
 
 #f
 
@@ -125,7 +126,12 @@ c = ggplot(d, aes(x=trial_sequence_total, y=response, color = condition, shape =
   geom_point() + 
   geom_smooth(method=lm, aes(fill=condition))+theme_bw()
 
-c
+#c
+c_clean = ggplot(d, aes(x=trial_sequence_total, y=response, color = condition, shape = condition)) + 
+ 
+  geom_smooth(method=lm, aes(fill=condition))+theme_bw()
+
+#c_clean
 d_1 <- subset(d, workerid = 1)
 lm(response~condition*trial_sequence_total, data = d_1)
 #by-subject Plot

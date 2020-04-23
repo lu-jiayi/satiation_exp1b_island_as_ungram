@@ -84,7 +84,7 @@ for (i in data$workerid){
 
 all_vec_features = all_vec
 all_vec_features$workerid <- NULL
-results<-kmeans(all_vec_features, 2)
+results<-kmeans(all_vec_features, 3)
 all_vec$cluster <- results$cluster
 results
 
@@ -107,11 +107,16 @@ results
  
  
  
- z_results<- crp_gibbs(as.matrix(intercept_vec),
-                       mu = c(0.5,0.5,0.5),
-                       iteration = 100)
+ z_results<- crp_gibbs(as.matrix(all_vec_features),
+                       mu = c(mean(all_vec_features$wh_intercept),
+                              mean(all_vec_features$wh_slope),
+                              mean(all_vec_features$subj_intercept),
+                              mean(all_vec_features$subj_slope),
+                              mean(all_vec_features$cnpc_intercept),
+                              mean(all_vec_features$cnpc_slope)),
+                       iteration = 2000)
  
 z_results
- pdf(rplot.pdf)
+
  graph = crp_graph_2d(as.matrix(intercept_vec), z_results)
  
